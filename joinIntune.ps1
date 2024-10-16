@@ -5,7 +5,7 @@ $guidKey = read-host "Please enter your Azure Tenant ID"
 function Is-ServiceRunning($serviceName)
 {
   $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-  return $service -ne $null -and $service.Status -eq 'Running'
+  return $null -ne $service -and $service.Status -eq 'Running'
 }
 
 # Function to start a service and wait for 30 seconds
@@ -49,7 +49,7 @@ if (Is-ServiceRunning $serviceName)
 $basePath    = 'HKLM:\SYSTEM\CurrentControlSet\Control\CloudDomainJoin\TenantInfo'
 $guidKeyPath = Join-Path $basePath $guidKey
 
-# Ensure the base registry path exists
+# Ensure the base registry path exists. This is the path for Azure registrations
 if (-not (Test-Path $basePath))
 {
   Write-Host "Base registry path not found. Creating it..."
@@ -67,7 +67,7 @@ if (-not (Test-Path $basePath))
   Write-Host "Base path '$basePath' already exists."
 }
 
-# Ensure the specific GUID key exists
+# Ensure the specific GUID key exists. If its not there, create it.
 if (-not (Test-Path $guidKeyPath))
 {
   Write-Host "Key '$guidKeyPath' not found! Creating it..."
@@ -89,7 +89,7 @@ if (-not (Test-Path $guidKeyPath))
 try
 {
   $mdmUrl = Get-ItemProperty -Path $guidKeyPath -Name 'MdmEnrollmentUrl' -ErrorAction SilentlyContinue
-  if ($mdmUrl -eq $null)
+  if ($null -eq $mdmUrl)
   {
     throw "MDM Enrollment URL not found"
   }
@@ -129,5 +129,12 @@ try
   }
 }
 
-# Exit script successfully
+# Ensure reg keys were added successfully, may take multiple tries.
+dsregcmd /status
+write-host "Please verify that the MdmUrl, MdmTouUrl, and MdmComplianceUrl fields are complete."
+write-host "If they are blank, run the script repetitively until they are filled in."
+# Unfortunately no way to check this automatically as the registry keys will be added physically so checks do not work.
+
+# Exit script
 exit 0
+
